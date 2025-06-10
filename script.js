@@ -115,29 +115,61 @@ let capabilities = null
 window.onload = () => {
   capabilities = applyFallbacks()
 
-  // Set up audio elements
-  const backgroundMusic = document.getElementById("backgroundMusic")
-
-  // Add event listeners with proper cross-browser support
+  // Initialize sound toggle
   const soundToggle = document.getElementById("soundToggle")
+  const soundIcon = document.getElementById("soundIcon")
+
+  // Set initial state
+  soundEnabled = true
+  if (soundIcon) {
+    soundIcon.textContent = "🔊"
+  }
+
+  // Add click event listener
   if (soundToggle) {
-    if (soundToggle.addEventListener) {
-      soundToggle.addEventListener("click", toggleSound)
-    } else if (soundToggle.attachEvent) {
-      // For IE8 and below
-      soundToggle.attachEvent("onclick", toggleSound)
-    }
+    // Remove any existing listeners first
+    soundToggle.onclick = null
+
+    // Add new listener
+    soundToggle.addEventListener("click", (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      toggleSound()
+    })
   }
 }
 
 function toggleSound() {
   soundEnabled = !soundEnabled
   const soundIcon = document.getElementById("soundIcon")
-  soundIcon.textContent = soundEnabled ? "🔊" : "🔇"
 
+  // Update the visual icon
+  if (soundIcon) {
+    soundIcon.textContent = soundEnabled ? "🔊" : "🔇"
+  }
+
+  // Handle background music
   const backgroundMusic = document.getElementById("backgroundMusic")
-  if (!soundEnabled && backgroundMusic) {
-    backgroundMusic.pause()
+  if (backgroundMusic) {
+    if (!soundEnabled) {
+      // Turn off sound - pause music
+      backgroundMusic.pause()
+    } else if (gameTimer) {
+      // Turn on sound during gameplay - restart music
+      try {
+        backgroundMusic.currentTime = 0
+        backgroundMusic.volume = 0.3
+        const playPromise = backgroundMusic.play()
+        if (playPromise !== undefined) {
+          playPromise.catch((error) => {
+            console.log("Could not play background music: ", error)
+          })
+        }
+        backgroundMusic.loop = true
+      } catch (e) {
+        console.log("Could not play background music")
+      }
+    }
   }
 }
 
@@ -265,10 +297,11 @@ function startGame() {
 
   startCountdown()
 
+  // Handle background music with proper sound state checking
   const backgroundMusic = document.getElementById("backgroundMusic")
   if (backgroundMusic && soundEnabled) {
-    backgroundMusic.currentTime = 0
     try {
+      backgroundMusic.currentTime = 0
       const playPromise = backgroundMusic.play()
 
       // Handle browsers that don't return a promise
@@ -277,10 +310,10 @@ function startGame() {
           console.log("Could not play background music: ", error)
         })
       }
+      backgroundMusic.loop = true
     } catch (e) {
       console.log("Could not play background music")
     }
-    backgroundMusic.loop = true
   }
 }
 
