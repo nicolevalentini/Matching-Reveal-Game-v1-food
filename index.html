@@ -2,12 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
   <title>Matching Reveal Game</title>
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <!-- Cross-browser polyfills -->
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6,IntersectionObserver,ResizeObserver,NodeList.prototype.forEach,Element.prototype.classList"></script>
 </head>
 <body>
+  <!-- Browser compatibility notice (hidden by default) -->
+  <div id="browserNotice" class="browser-notice">
+    <div class="notice-content">
+      <p>For the best experience, please use a modern browser like Chrome, Firefox, Safari, or Edge.</p>
+      <button onclick="dismissNotice()">Continue Anyway</button>
+    </div>
+  </div>
+
   <!-- Sound Toggle Button -->
   <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">
     <span id="soundIcon">🔊</span>
@@ -78,14 +91,35 @@
   
   <div class="confetti" id="confetti"></div>
   
-  <!-- Audio elements -->
-  <audio id="clickSound" src="./mouse-click-sound-233951.mp3" preload="auto"></audio>
-  <audio id="matchSound" src="./bubblepop-254773.mp3" preload="auto"></audio>
-  <audio id="winSound" src="./success-fanfare-trumpets-6185.mp3" preload="auto"></audio>
-  <audio id="envelopeSound" src="./envelope-open-sound.mp3" preload="auto"></audio>
-  <audio id="tickSound" src="./clock-tick.mp3" preload="auto"></audio>
-  <audio id="timeoutSound" src="./timeout-buzzer.mp3" preload="auto"></audio>
-  <audio id="backgroundMusic" src="./backmusic.mp3" preload="auto"></audio>
+  <!-- Audio elements with multiple formats -->
+  <audio id="clickSound" preload="auto">
+    <source src="./mouse-click-sound-233951.mp3" type="audio/mpeg">
+    <source src="./mouse-click-sound-233951.ogg" type="audio/ogg">
+  </audio>
+  <audio id="matchSound" preload="auto">
+    <source src="./bubblepop-254773.mp3" type="audio/mpeg">
+    <source src="./bubblepop-254773.ogg" type="audio/ogg">
+  </audio>
+  <audio id="winSound" preload="auto">
+    <source src="./success-fanfare-trumpets-6185.mp3" type="audio/mpeg">
+    <source src="./success-fanfare-trumpets-6185.ogg" type="audio/ogg">
+  </audio>
+  <audio id="envelopeSound" preload="auto">
+    <source src="./envelope-open-sound.mp3" type="audio/mpeg">
+    <source src="./envelope-open-sound.ogg" type="audio/ogg">
+  </audio>
+  <audio id="tickSound" preload="auto">
+    <source src="./clock-tick.mp3" type="audio/mpeg">
+    <source src="./clock-tick.ogg" type="audio/ogg">
+  </audio>
+  <audio id="timeoutSound" preload="auto">
+    <source src="./timeout-buzzer.mp3" type="audio/mpeg">
+    <source src="./timeout-buzzer.ogg" type="audio/ogg">
+  </audio>
+  <audio id="backgroundMusic" preload="auto">
+    <source src="./backmusic.mp3" type="audio/mpeg">
+    <source src="./backmusic.ogg" type="audio/ogg">
+  </audio>
 
   <script src="script.js"></script>
 </body>
