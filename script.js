@@ -1,3 +1,106 @@
+// Browser detection and compatibility
+function detectBrowser() {
+  const isIE = /*@cc_on!@*/ false || !!document.documentMode
+  const isEdge = !isIE && !!window.StyleMedia
+  const isChrome = !!window.chrome && (!!window.chrome.webstore || !!window.chrome.runtime)
+  const isFirefox = typeof InstallTrigger !== "undefined"
+  const isSafari =
+    /constructor/i.test(window.HTMLElement) ||
+    ((p) => p.toString() === "[object SafariRemoteNotification]")(
+      !window["safari"] || (typeof safari !== "undefined" && safari.pushNotification),
+    )
+  const isOpera = (!!window.opr && !!opr.addons) || !!window.opera || navigator.userAgent.indexOf(" OPR/") >= 0
+
+  // Check for older browsers
+  const isOldBrowser =
+    isIE || navigator.userAgent.indexOf("MSIE") !== -1 || navigator.userAgent.indexOf("Trident/") !== -1
+
+  return {
+    isIE,
+    isEdge,
+    isChrome,
+    isFirefox,
+    isSafari,
+    isOpera,
+    isOldBrowser,
+  }
+}
+
+// Check for animation support
+function supportsAnimations() {
+  const elm = document.createElement("div")
+  return (
+    elm.style.animationName !== undefined ||
+    elm.style.WebkitAnimationName !== undefined ||
+    elm.style.MozAnimationName !== undefined ||
+    elm.style.msAnimationName !== undefined ||
+    elm.style.OAnimationName !== undefined
+  )
+}
+
+// Check for audio support
+function supportsAudio() {
+  const audio = document.createElement("audio")
+  return !!audio.canPlayType
+}
+
+// Check for CSS Grid support
+function supportsGrid() {
+  return window.CSS && CSS.supports && CSS.supports("display", "grid")
+}
+
+// Apply fallbacks based on browser capabilities
+function applyFallbacks() {
+  const browser = detectBrowser()
+  const hasAnimations = supportsAnimations()
+  const hasAudio = supportsAudio()
+  const hasGrid = supportsGrid()
+
+  // Show warning for very old browsers
+  if (browser.isOldBrowser) {
+    document.getElementById("browserNotice").style.display = "flex"
+  }
+
+  // Apply fallbacks for grid
+  if (!hasGrid) {
+    const gameBoard = document.getElementById("gameBoard")
+    if (gameBoard) {
+      gameBoard.style.display = "flex"
+      gameBoard.style.flexWrap = "wrap"
+    }
+  }
+
+  // Apply fallbacks for animations
+  if (!hasAnimations) {
+    const style = document.createElement("style")
+    style.textContent = `
+      .game-tile:hover, .start-button:hover, .action-button:hover {
+        margin-top: -2px;
+      }
+      .envelope-flap.open {
+        visibility: hidden;
+      }
+      .envelope-letter.reveal {
+        top: -30px;
+      }
+    `
+    document.head.appendChild(style)
+  }
+
+  return {
+    browser,
+    hasAnimations,
+    hasAudio,
+    hasGrid,
+  }
+}
+
+// Dismiss browser notice
+function dismissNotice() {
+  document.getElementById("browserNotice").style.display = "none"
+}
+
+// Game variables
 const symbols = ["🍵", "🍰", "🍜", "🍙", "🍡", "🍣", "🍤", "🍛", "🍚", "🍘", "🍢", "🥠"]
 const tiles = symbols.concat(symbols)
 let firstTile = null
@@ -6,11 +109,25 @@ let gameTimer
 let timeRemaining = 120
 let matchedPairs = 0
 let soundEnabled = true
+let capabilities = null
 
-const backgroundMusic = document.getElementById("backgroundMusic")
+// Initialize on page load
+window.onload = () => {
+  capabilities = applyFallbacks()
 
-function shuffleArray(arr) {
-  return arr.sort(() => Math.random() - 0.5)
+  // Set up audio elements
+  const backgroundMusic = document.getElementById("backgroundMusic")
+
+  // Add event listeners with proper cross-browser support
+  const soundToggle = document.getElementById("soundToggle")
+  if (soundToggle) {
+    if (soundToggle.addEventListener) {
+      soundToggle.addEventListener("click", toggleSound)
+    } else if (soundToggle.attachEvent) {
+      // For IE8 and below
+      soundToggle.attachEvent("onclick", toggleSound)
+    }
+  }
 }
 
 function toggleSound() {
@@ -18,6 +135,7 @@ function toggleSound() {
   const soundIcon = document.getElementById("soundIcon")
   soundIcon.textContent = soundEnabled ? "🔊" : "🔇"
 
+  const backgroundMusic = document.getElementById("backgroundMusic")
   if (!soundEnabled && backgroundMusic) {
     backgroundMusic.pause()
   }
@@ -39,6 +157,7 @@ function updateProgress() {
 function resetToMenu() {
   // Stop timer and music
   clearInterval(gameTimer)
+  const backgroundMusic = document.getElementById("backgroundMusic")
   if (backgroundMusic) {
     backgroundMusic.pause()
     backgroundMusic.currentTime = 0
@@ -88,7 +207,13 @@ function startGame() {
     instructionsBox.style.display = "none"
   }, 300)
 
-  gameBoard.style.display = "grid"
+  // Use appropriate display style based on browser capabilities
+  if (capabilities && !capabilities.hasGrid) {
+    gameBoard.style.display = "flex"
+  } else {
+    gameBoard.style.display = "grid"
+  }
+
   gameBoard.innerHTML = ""
   timeRemaining = 120
   matchedPairs = 0
@@ -103,18 +228,58 @@ function startGame() {
   shuffled.forEach((symbol, index) => {
     const tile = document.createElement("div")
     tile.className = "game-tile"
-    tile.dataset.symbol = symbol
-    tile.dataset.index = index
+    tile.setAttribute("data-symbol", symbol)
+    tile.setAttribute("data-index", index)
     tile.innerText = ""
-    tile.onclick = () => handleTileClick(tile)
+
+    // Cross-browser event handling
+    if (tile.addEventListener) {
+      // Modern browsers
+      tile.addEventListener("click", function (e) {
+        e.preventDefault()
+        handleTileClick(this)
+      })
+
+      // Add touch support
+      tile.addEventListener("touchstart", function (e) {
+        e.preventDefault()
+        this.style.transform = "scale(0.95)"
+        this.style.webkitTransform = "scale(0.95)"
+      })
+
+      tile.addEventListener("touchend", function (e) {
+        e.preventDefault()
+        this.style.transform = ""
+        this.style.webkitTransform = ""
+        handleTileClick(this)
+      })
+    } else if (tile.attachEvent) {
+      // IE8 and below
+      tile.attachEvent("onclick", () => {
+        handleTileClick(tile)
+      })
+    }
+
     gameBoard.appendChild(tile)
   })
 
   startCountdown()
 
+  const backgroundMusic = document.getElementById("backgroundMusic")
   if (backgroundMusic && soundEnabled) {
     backgroundMusic.currentTime = 0
-    backgroundMusic.play().catch((e) => console.log("Could not play background music"))
+    try {
+      const playPromise = backgroundMusic.play()
+
+      // Handle browsers that don't return a promise
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log("Could not play background music: ", error)
+        })
+      }
+    } catch (e) {
+      console.log("Could not play background music")
+    }
     backgroundMusic.loop = true
   }
 }
@@ -134,8 +299,14 @@ function startCountdown() {
       if (timeRemaining <= 5) {
         const tickSound = document.getElementById("tickSound")
         if (tickSound && soundEnabled) {
-          tickSound.currentTime = 0
-          tickSound.play().catch((e) => console.log("Could not play tick sound"))
+          try {
+            tickSound.currentTime = 0
+            tickSound.play().catch((e) => {
+              console.log("Could not play tick sound")
+            })
+          } catch (e) {
+            console.log("Could not play tick sound")
+          }
         }
       }
     }
@@ -152,9 +323,14 @@ function endGame(won) {
   document.getElementById("timerContainer").style.display = "none"
   document.getElementById("progressContainer").style.display = "none"
 
+  const backgroundMusic = document.getElementById("backgroundMusic")
   if (backgroundMusic) {
     backgroundMusic.pause()
-    backgroundMusic.currentTime = 0
+    try {
+      backgroundMusic.currentTime = 0
+    } catch (e) {
+      // Some browsers don't support setting currentTime
+    }
   }
 
   if (won) {
@@ -162,8 +338,14 @@ function endGame(won) {
   } else {
     const timeoutSound = document.getElementById("timeoutSound")
     if (timeoutSound && soundEnabled) {
-      timeoutSound.currentTime = 0
-      timeoutSound.play().catch((e) => console.log("Could not play timeout sound"))
+      try {
+        timeoutSound.currentTime = 0
+        timeoutSound.play().catch((e) => {
+          console.log("Could not play timeout sound")
+        })
+      } catch (e) {
+        console.log("Could not play timeout sound")
+      }
     }
 
     document.getElementById("gameBoard").style.display = "none"
@@ -192,31 +374,61 @@ function endGame(won) {
 function handleTileClick(tile) {
   if (!canClick || tile.innerText !== "" || tile.classList.contains("matched")) return
 
-  const clickSound = document.getElementById("clickSound")
-  if (clickSound && soundEnabled) {
-    clickSound.currentTime = 0
-    clickSound.play().catch((e) => console.log("Could not play click sound"))
+  // Prevent default for event if it exists
+  if (event) {
+    event.preventDefault()
+    event.stopPropagation()
   }
 
-  tile.innerText = tile.dataset.symbol
-  tile.classList.add("flipped")
+  const clickSound = document.getElementById("clickSound")
+  if (clickSound && soundEnabled) {
+    try {
+      clickSound.currentTime = 0
+      clickSound.play().catch((e) => {
+        console.log("Could not play click sound")
+      })
+    } catch (e) {
+      console.log("Could not play click sound")
+    }
+  }
+
+  tile.innerText = tile.getAttribute("data-symbol")
+
+  // Cross-browser class manipulation
+  if (tile.classList) {
+    tile.classList.add("flipped")
+  } else {
+    tile.className += " flipped"
+  }
 
   if (!firstTile) {
     firstTile = tile
   } else {
     canClick = false
-    if (firstTile.dataset.symbol === tile.dataset.symbol && firstTile !== tile) {
+    if (firstTile.getAttribute("data-symbol") === tile.getAttribute("data-symbol") && firstTile !== tile) {
       const matchSound = document.getElementById("matchSound")
       if (matchSound && soundEnabled) {
-        matchSound.currentTime = 0
-        matchSound.play().catch((e) => console.log("Could not play match sound"))
+        try {
+          matchSound.currentTime = 0
+          matchSound.play().catch((e) => {
+            console.log("Could not play match sound")
+          })
+        } catch (e) {
+          console.log("Could not play match sound")
+        }
       }
 
       setTimeout(() => {
-        firstTile.classList.add("matched")
-        tile.classList.add("matched")
-        firstTile.classList.remove("flipped")
-        tile.classList.remove("flipped")
+        // Cross-browser class manipulation
+        if (tile.classList) {
+          firstTile.classList.add("matched")
+          tile.classList.add("matched")
+          firstTile.classList.remove("flipped")
+          tile.classList.remove("flipped")
+        } else {
+          firstTile.className = firstTile.className.replace("flipped", "matched")
+          tile.className = tile.className.replace("flipped", "matched")
+        }
 
         matchedPairs++
         updateProgress()
@@ -229,8 +441,16 @@ function handleTileClick(tile) {
       setTimeout(() => {
         tile.innerText = ""
         firstTile.innerText = ""
-        tile.classList.remove("flipped")
-        firstTile.classList.remove("flipped")
+
+        // Cross-browser class manipulation
+        if (tile.classList) {
+          tile.classList.remove("flipped")
+          firstTile.classList.remove("flipped")
+        } else {
+          tile.className = tile.className.replace(" flipped", "")
+          firstTile.className = firstTile.className.replace(" flipped", "")
+        }
+
         firstTile = null
         canClick = true
       }, 1000)
@@ -251,38 +471,83 @@ function celebrateWin() {
   document.getElementById("gameBoard").style.display = "none"
   document.getElementById("instructionsBox").style.opacity = "0"
 
+  const backgroundMusic = document.getElementById("backgroundMusic")
   if (backgroundMusic) {
     backgroundMusic.pause()
-    backgroundMusic.currentTime = 0
+    try {
+      backgroundMusic.currentTime = 0
+    } catch (e) {
+      // Some browsers don't support setting currentTime
+    }
   }
 
   document.getElementById("envelopeContainer").style.display = "block"
 
   const winSound = document.getElementById("winSound")
   if (winSound && soundEnabled) {
-    winSound.currentTime = 0
-    winSound.play().catch((e) => console.log("Could not play win sound"))
+    try {
+      winSound.currentTime = 0
+      winSound.play().catch((e) => {
+        console.log("Could not play win sound")
+      })
+    } catch (e) {
+      console.log("Could not play win sound")
+    }
   }
 
   createConfetti()
 
   setTimeout(() => {
-    document.getElementById("envelopeFlap").classList.add("open")
+    const envelopeFlap = document.getElementById("envelopeFlap")
+
+    // Cross-browser class manipulation
+    if (envelopeFlap.classList) {
+      envelopeFlap.classList.add("open")
+    } else {
+      envelopeFlap.className += " open"
+    }
 
     const envelopeSound = document.getElementById("envelopeSound")
     if (envelopeSound && soundEnabled) {
-      envelopeSound.currentTime = 0
-      envelopeSound.play().catch((e) => console.log("Could not play envelope sound"))
+      try {
+        envelopeSound.currentTime = 0
+        envelopeSound.play().catch((e) => {
+          console.log("Could not play envelope sound")
+        })
+      } catch (e) {
+        console.log("Could not play envelope sound")
+      }
     }
 
     setTimeout(() => {
-      document.getElementById("envelopeLetter").classList.add("reveal")
+      const envelopeLetter = document.getElementById("envelopeLetter")
+
+      // Cross-browser class manipulation
+      if (envelopeLetter.classList) {
+        envelopeLetter.classList.add("reveal")
+      } else {
+        envelopeLetter.className += " reveal"
+      }
 
       setTimeout(() => {
-        document.getElementById("messageContent").classList.add("show")
+        const messageContent = document.getElementById("messageContent")
+
+        // Cross-browser class manipulation
+        if (messageContent.classList) {
+          messageContent.classList.add("show")
+        } else {
+          messageContent.className += " show"
+        }
 
         setTimeout(() => {
-          document.getElementById("actionButtons").classList.add("show")
+          const actionButtons = document.getElementById("actionButtons")
+
+          // Cross-browser class manipulation
+          if (actionButtons.classList) {
+            actionButtons.classList.add("show")
+          } else {
+            actionButtons.className += " show"
+          }
         }, 800)
       }, 500)
     }, 1000)
@@ -292,6 +557,9 @@ function celebrateWin() {
 function createConfetti() {
   const confettiWrapper = document.getElementById("confettiWrapper")
   const colors = ["#ff8563", "#ffce47", "#a5dd9b", "#60c1e8", "#f588eb"]
+
+  // Check if Web Animations API is supported
+  const supportsAnimations = "animate" in document.createElement("div")
 
   for (let i = 0; i < 100; i++) {
     const confetti = document.createElement("div")
@@ -310,20 +578,55 @@ function createConfetti() {
     const duration = Math.random() * 3 + 2
     const rotation = Math.random() * 360
 
-    confetti.animate(
-      [
-        { transform: `translateY(0) rotate(0deg)`, opacity: 1 },
-        { transform: `translateY(100vh) rotate(${rotation}deg)`, opacity: 0 },
-      ],
-      {
-        duration: duration * 1000,
-        easing: "cubic-bezier(0.17, 0.67, 0.83, 0.67)",
-        fill: "forwards",
-      },
-    )
+    if (supportsAnimations) {
+      // Modern browsers with Web Animations API
+      try {
+        confetti.animate(
+          [
+            { transform: `translateY(0) rotate(0deg)`, opacity: 1 },
+            { transform: `translateY(100vh) rotate(${rotation}deg)`, opacity: 0 },
+          ],
+          {
+            duration: duration * 1000,
+            easing: "cubic-bezier(0.17, 0.67, 0.83, 0.67)",
+            fill: "forwards",
+          },
+        )
+      } catch (e) {
+        // Fallback for browsers that support animate() but have issues
+        fallbackAnimation(confetti, duration, rotation)
+      }
+    } else {
+      // Fallback for older browsers
+      fallbackAnimation(confetti, duration, rotation)
+    }
 
+    // Remove confetti element after animation
     setTimeout(() => {
-      confetti.remove()
+      if (confetti.parentNode) {
+        confetti.parentNode.removeChild(confetti)
+      }
     }, duration * 1000)
   }
+}
+
+function fallbackAnimation(element, duration, rotation) {
+  // CSS-based fallback animation
+  element.style.transition = `transform ${duration}s cubic-bezier(0.17, 0.67, 0.83, 0.67), opacity ${duration}s cubic-bezier(0.17, 0.67, 0.83, 0.67)`
+
+  // Use setTimeout to ensure the initial state is rendered before changing
+  setTimeout(() => {
+    element.style.transform = `translateY(100vh) rotate(${rotation}deg)`
+    element.style.opacity = "0"
+  }, 10)
+}
+
+// Utility function to shuffle array
+function shuffleArray(arr) {
+  const newArr = arr.slice()
+  for (let i = newArr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[newArr[i], newArr[j]] = [newArr[j], newArr[i]]
+  }
+  return newArr
 }
