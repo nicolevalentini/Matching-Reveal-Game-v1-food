@@ -246,6 +246,10 @@ function startGame() {
     gameBoard.style.display = "grid"
   }
 
+  // Ensure the game board is visible for automated testing
+  gameBoard.style.visibility = "visible"
+  gameBoard.style.opacity = "1"
+
   gameBoard.innerHTML = ""
   timeRemaining = 120
   matchedPairs = 0
@@ -330,17 +334,8 @@ function startCountdown() {
       timerContainer.classList.add("timer-warning")
 
       if (timeRemaining <= 5) {
-        const tickSound = document.getElementById("tickSound")
-        if (tickSound && soundEnabled) {
-          try {
-            tickSound.currentTime = 0
-            tickSound.play().catch((e) => {
-              console.log("Could not play tick sound")
-            })
-          } catch (e) {
-            console.log("Could not play tick sound")
-          }
-        }
+        // Tick sound removed - file doesn't exist
+        // Could add visual feedback here instead
       }
     }
 
@@ -369,17 +364,8 @@ function endGame(won) {
   if (won) {
     celebrateWin()
   } else {
-    const timeoutSound = document.getElementById("timeoutSound")
-    if (timeoutSound && soundEnabled) {
-      try {
-        timeoutSound.currentTime = 0
-        timeoutSound.play().catch((e) => {
-          console.log("Could not play timeout sound")
-        })
-      } catch (e) {
-        console.log("Could not play timeout sound")
-      }
-    }
+    // Timeout sound removed - file doesn't exist
+    // Could add visual feedback here instead
 
     document.getElementById("gameBoard").style.display = "none"
 
@@ -516,17 +502,8 @@ function celebrateWin() {
 
   document.getElementById("envelopeContainer").style.display = "block"
 
-  const winSound = document.getElementById("winSound")
-  if (winSound && soundEnabled) {
-    try {
-      winSound.currentTime = 0
-      winSound.play().catch((e) => {
-        console.log("Could not play win sound")
-      })
-    } catch (e) {
-      console.log("Could not play win sound")
-    }
-  }
+  // Win sound removed - file doesn't exist
+  // Could add visual feedback here instead
 
   createConfetti()
 
